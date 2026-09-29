@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        String    @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  aiPrompt  String?   @map("ai_prompt") @db.Text
+  plan      String    @default("free") // free, pro, enterprise
+  status    String    @default("active") // active, suspended
+  
+  // Evolution API Integration
+  evolutionApiUrl      String?   @map("evolution_api_url")
+  evolutionApiKey      String?   @map("evolution_api_key")
+  evolutionInstanceName String?   @map("evolution_instance_name")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  users     User[]
+  contacts  Contact[]
+  chats     Chat[]
+  tags      Tag[]
+
+  @@map("companies")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("agent") // admin, agent
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("users")
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  phone     String
+  email     String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  chats   Chat[]
+  tags    Tag[]   @relation("ContactTags")
+
+  @@index([companyId, phone])
+  @@map("contacts")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  color     String?  @default("#6366f1")
+  
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contacts  Contact[] @relation("ContactTags")
+
+  @@unique([companyId, name])
+  @@map("tags")
+}
+
+model Chat {
+  id              String   @id @default(uuid())
+  companyId       String   @map("company_id")
+  contactId       String   @map("contact_id")
+  status          String   @default("open") // open, closed, pending, snoozed
+  leadTemperature String   @default("warm") @map("lead_temperature") // hot, warm, cold
+  lastMessageAt   DateTime @default(now()) @map("last_message_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact      Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  messages     ChatMessage[]
+  appointments Appointment[]
+
+  @@index([companyId, status])
+  @@index([companyId, lastMessageAt])
+  @@map("chats")
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  chatId    String   @map("chat_id")
+  message   String   @db.Text
+  sender    String   // client, bot, agent
+  type      String   @default("text") // text, image, audio, location
+  createdAt DateTime @default(now()) @map("created_at")
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+  @@map("chat_messages")
+}
+
+model Appointment {
+  id        String   @id @default(uuid())
+  chatId    String   @map("chat_id")
+  date      DateTime
+  status    String   @default("pending") // confirmed, pending, cancelled
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, date])
+  @@map("appointments")
+}

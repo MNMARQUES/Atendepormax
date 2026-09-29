@@ -1,0 +1,6 @@
+{
+  "name": "AtendeProMax",
+  "description": "SaaS de gerenciamento de atendimentos via WhatsApp com IA, focado em clínicas, salões e consultórios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
